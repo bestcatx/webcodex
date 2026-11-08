@@ -111,7 +111,10 @@ impl JobManager {
         }
         let start = Instant::now();
         let mut command = commands.pop_front().expect("validated non-empty plan");
-        let spawn = ManagedChild::spawn_with_options(&mut command, super::super::shell::background_console_spawn_options());
+        let spawn = ManagedChild::spawn_with_options(
+            &mut command,
+            super::super::shell::background_console_spawn_options(),
+        );
         let mut child = match spawn {
             Ok(child) => child,
             Err(e) => {
@@ -406,7 +409,10 @@ impl JobManager {
                     let mut next_command = commands
                         .pop_front()
                         .expect("one command per validation step");
-                    let spawn = ManagedChild::spawn_with_options(&mut next_command, super::super::shell::background_console_spawn_options());
+                    let spawn = ManagedChild::spawn_with_options(
+                        &mut next_command,
+                        super::super::shell::background_console_spawn_options(),
+                    );
                     let mut next = match spawn {
                         Ok(child) => child,
                         Err(_error) => {
