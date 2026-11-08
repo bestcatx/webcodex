@@ -25,11 +25,26 @@ use webcodex_core::runner_protocol::ShellCommandExecutionState;
 use webcodex_core::runner_protocol::{ShellProcessArgv, ShellScriptLanguage, ShellScriptPayload};
 
 use webcodex_core::workflow_session_contract::ExecutionShell;
-use webcodex_process::{GracefulTermination, ManagedChild};
+use webcodex_process::{GracefulTermination, ManagedChild, SpawnOptions};
 
 #[path = "process_command.rs"]
 mod process_command;
 pub(crate) use process_command::structured_process_command;
+
+/// Hide background child consoles without changing interactive terminal behavior.
+pub(crate) fn background_console_spawn_options() -> SpawnOptions {
+    #[cfg(windows)]
+    {
+        SpawnOptions {
+            windows_creation_flags: windows_sys::Win32::System::Threading::CREATE_NO_WINDOW,
+            ..SpawnOptions::default()
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        SpawnOptions::default()
+    }
+}
 
 const SHELL_PROFILE_PREPARE_TIMEOUT_SECS: u64 = 30;
 const PROCESS_GROUP_TERMINATION_GRACE: Duration = Duration::from_millis(50);
