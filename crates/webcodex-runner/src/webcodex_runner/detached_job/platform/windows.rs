@@ -316,7 +316,13 @@ pub(in crate::webcodex_runner::detached_job) fn run_accepted_payload(
     // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE Job Object therefore belongs to the
     // supervisor rather than the Runner. If the supervisor dies, Windows closes
     // its last Job handle and kills the complete payload tree.
-    let mut payload = ManagedChild::spawn(&mut payload_command)
+    let mut payload = ManagedChild::spawn_with_options(
+        &mut payload_command,
+        webcodex_process::SpawnOptions {
+            windows_creation_flags: windows_sys::Win32::System::Threading::CREATE_NO_WINDOW,
+            ..webcodex_process::SpawnOptions::default()
+        },
+    )
         .map_err(|error| format!("failed to spawn detached Windows payload: {error}"))?;
     let payload_started = unix_ms();
     let tree_pid = payload.id();
