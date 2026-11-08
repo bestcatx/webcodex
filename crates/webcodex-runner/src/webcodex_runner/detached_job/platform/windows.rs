@@ -323,7 +323,7 @@ pub(in crate::webcodex_runner::detached_job) fn run_accepted_payload(
             ..webcodex_process::SpawnOptions::default()
         },
     )
-        .map_err(|error| format!("failed to spawn detached Windows payload: {error}"))?;
+    .map_err(|error| format!("failed to spawn detached Windows payload: {error}"))?;
     let payload_started = unix_ms();
     let tree_pid = payload.id();
     let tree_identity = DetachedProcessIdentity {
