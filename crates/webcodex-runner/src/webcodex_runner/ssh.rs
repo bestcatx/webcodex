@@ -1160,7 +1160,7 @@ fn spawn_piped_ssh_child(command: &mut Command) -> std::io::Result<PipedSshChild
     }
     #[cfg(windows)]
     {
-        ManagedChild::spawn(command)
+        ManagedChild::spawn_with_options(command, super::shell::background_console_spawn_options())
     }
 }
 
