@@ -10,6 +10,22 @@ fn inherited_environment_drops_windows_drive_current_directory_entries() {
     assert!(!should_inherit_env_key("WebCodex_Token"));
 }
 
+#[cfg(windows)]
+#[test]
+fn background_console_spawn_options_hide_windows_console() {
+    assert_eq!(
+        background_console_spawn_options().windows_creation_flags,
+        windows_sys::Win32::System::Threading::CREATE_NO_WINDOW,
+    );
+    assert!(!background_console_spawn_options().windows_silent_child_breakaway);
+}
+
+#[cfg(unix)]
+#[test]
+fn background_console_spawn_options_are_default_on_unix() {
+    assert_eq!(background_console_spawn_options().windows_creation_flags, 0);
+}
+
 struct ProcessArgvHelper {
     _temp: tempfile::TempDir,
     path: PathBuf,
