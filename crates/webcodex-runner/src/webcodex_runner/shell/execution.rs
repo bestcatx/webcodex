@@ -5,6 +5,32 @@ use super::*;
 #[allow(clippy::too_many_arguments)]
 pub(super) fn execute_configured_command(
     policy: &RunnerPolicy,
+    cmd: Command,
+    cwd_path: &Path,
+    stdin: Option<&str>,
+    timeout_secs: u64,
+    stop_requested: Option<&AtomicBool>,
+    start: Instant,
+    spawn_error_prefix: &str,
+    on_started: Option<&dyn Fn()>,
+) -> ShellCommandResult {
+    execute_configured_command_with_options(
+        policy,
+        cmd,
+        cwd_path,
+        stdin,
+        timeout_secs,
+        stop_requested,
+        start,
+        spawn_error_prefix,
+        on_started,
+        SpawnOptions::default(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn execute_configured_command_with_options(
+    policy: &RunnerPolicy,
     mut cmd: Command,
     cwd_path: &Path,
     stdin: Option<&str>,
@@ -13,6 +39,7 @@ pub(super) fn execute_configured_command(
     start: Instant,
     spawn_error_prefix: &str,
     on_started: Option<&dyn Fn()>,
+    spawn_options: SpawnOptions,
 ) -> ShellCommandResult {
     cmd.current_dir(cwd_path)
         .stdout(Stdio::piped())
@@ -31,7 +58,7 @@ pub(super) fn execute_configured_command(
     // ManagedChild owns the whole process tree: a private process group on
     // Unix, a kill-on-close Job Object on Windows. `child_mut()` below only
     // accesses pipe handles; every termination still uses the managed tree.
-    let spawn = ManagedChild::spawn(&mut cmd);
+    let spawn = ManagedChild::spawn_with_options(&mut cmd, spawn_options);
     let mut child = match spawn {
         Ok(child) => child,
         Err(error) => {

@@ -1697,6 +1697,20 @@ fn typescript_plan_uses_mts_native_argv_and_runner_owned_prefix() {
     assert!(!command.get_args().any(|arg| arg == OsStr::new("-e")));
 }
 
+#[cfg(windows)]
+#[test]
+fn windows_background_and_typed_scripts_hide_console() {
+    use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
+    assert_eq!(
+        background_console_spawn_options().windows_creation_flags,
+        CREATE_NO_WINDOW
+    );
+    assert_eq!(
+        script_spawn_options().windows_creation_flags,
+        CREATE_NO_WINDOW
+    );
+}
+
 #[test]
 fn powershell_plan_uses_ps1_file_and_never_command_text_mode() {
     use std::ffi::OsStr;
@@ -1717,7 +1731,12 @@ fn powershell_plan_uses_ps1_file_and_never_command_text_mode() {
     let actual = command.get_args().collect::<Vec<_>>();
     let mut expected = vec![OsStr::new("-NoProfile"), OsStr::new("-NonInteractive")];
     if cfg!(windows) {
-        expected.extend([OsStr::new("-ExecutionPolicy"), OsStr::new("Bypass")]);
+        expected.extend([
+            OsStr::new("-WindowStyle"),
+            OsStr::new("Hidden"),
+            OsStr::new("-ExecutionPolicy"),
+            OsStr::new("Bypass"),
+        ]);
     }
     expected.extend([
         OsStr::new("-File"),
@@ -2201,7 +2220,12 @@ fn phase_f_windows_timeout_retains_unicode_and_runs_child_once() {
         None,
         1,
     );
-    assert_eq!(result.execution_state, ShellCommandExecutionState::TimedOut);
+    assert_eq!(
+        result.execution_state,
+        ShellCommandExecutionState::TimedOut,
+        "diagnostic: {:?}",
+        result.result
+    );
     assert_eq!(result.result.exit_code, Some(-1));
     assert!(result
         .result

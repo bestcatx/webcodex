@@ -229,7 +229,7 @@ pub(super) fn run_shell_impl(
         .as_deref()
         .map(|profile_name| format!("failed to spawn shell profile '{profile_name}'"))
         .unwrap_or_else(|| "failed to spawn command".to_string());
-    execute_configured_command(
+    execute_configured_command_with_options(
         policy,
         cmd,
         &cwd_path,
@@ -239,5 +239,6 @@ pub(super) fn run_shell_impl(
         start,
         &spawn_error_prefix,
         None,
+        background_console_spawn_options(),
     )
 }

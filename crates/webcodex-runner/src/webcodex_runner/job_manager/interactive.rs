@@ -47,6 +47,7 @@ impl JobManager {
         };
         self.start_prepared_shell_job(PreparedShellJob {
             job_id: request.job_id.clone(),
+            background_console: false,
             operation: start.operation,
             policy: start.policy,
             steps: vec![],

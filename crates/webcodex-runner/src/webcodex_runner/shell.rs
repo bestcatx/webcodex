@@ -25,11 +25,25 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use webcodex_core::workflow_session_contract::ExecutionShell;
-use webcodex_process::{GracefulTermination, ManagedChild};
+use webcodex_process::{GracefulTermination, ManagedChild, SpawnOptions};
 
 #[path = "process_command.rs"]
 mod process_command;
 pub(crate) use process_command::structured_process_command;
+
+pub(crate) fn background_console_spawn_options() -> SpawnOptions {
+    #[cfg(windows)]
+    {
+        SpawnOptions {
+            windows_creation_flags: windows_sys::Win32::System::Threading::CREATE_NO_WINDOW,
+            ..SpawnOptions::default()
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        SpawnOptions::default()
+    }
+}
 
 const SHELL_PROFILE_PREPARE_TIMEOUT_SECS: u64 = 30;
 const PROCESS_GROUP_TERMINATION_GRACE: Duration = Duration::from_millis(50);
@@ -144,9 +158,9 @@ use environment::{
     resolved_shell_program, should_inherit_env_key,
 };
 pub(crate) use environment::{base_shell_env, env_keys_equal, is_sensitive_env_key};
-use execution::execute_configured_command;
 #[cfg(test)]
 use execution::spawned_output_failure;
+use execution::{execute_configured_command, execute_configured_command_with_options};
 pub(crate) use internal::{
     run_internal_posix_script_with_profiles_and_execution_state,
     run_internal_search_script_with_profiles_and_execution_state,
@@ -173,6 +187,8 @@ pub(crate) use run::run_shell_with_profiles_and_execution_state;
 #[cfg(test)]
 pub(crate) use run::{run_shell, run_shell_with_profiles};
 use scripts::configured_script_interpreter;
+#[cfg(all(test, windows))]
+use scripts::script_spawn_options;
 #[cfg(test)]
 use scripts::{
     build_script_command, configured_script_runtime_plan, create_temporary_script,

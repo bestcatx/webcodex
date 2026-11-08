@@ -200,6 +200,7 @@ impl JobManager {
         }
         self.start_prepared_shell_job(PreparedShellJob {
             job_id,
+            background_console: true,
             operation,
             policy,
             steps,

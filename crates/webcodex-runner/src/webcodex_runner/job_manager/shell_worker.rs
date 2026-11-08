@@ -9,6 +9,7 @@ use super::*;
 /// A fully prepared local Shell/validation plan, before any child is spawned.
 pub(super) struct PreparedShellJob {
     pub(super) job_id: String,
+    pub(super) background_console: bool,
     pub(super) operation: RunnerJobOperation,
     pub(super) policy: RunnerPolicy,
     pub(super) steps: Vec<ShellJobValidationStep>,
@@ -24,6 +25,7 @@ impl JobManager {
     pub(super) fn start_prepared_shell_job(&self, prepared: PreparedShellJob) {
         let PreparedShellJob {
             job_id,
+            background_console,
             operation,
             policy,
             steps,
@@ -65,7 +67,14 @@ impl JobManager {
         }
         let start = Instant::now();
         let mut command = commands.pop_front().expect("validated non-empty plan");
-        let spawn = ManagedChild::spawn(&mut command);
+        let spawn = ManagedChild::spawn_with_options(
+            &mut command,
+            if background_console {
+                crate::webcodex_runner::shell::background_console_spawn_options()
+            } else {
+                Default::default()
+            },
+        );
         let mut child = match spawn {
             Ok(child) => child,
             Err(e) => {
@@ -357,7 +366,14 @@ impl JobManager {
                     let mut next_command = commands
                         .pop_front()
                         .expect("one command per validation step");
-                    let spawn = ManagedChild::spawn(&mut next_command);
+                    let spawn = ManagedChild::spawn_with_options(
+                        &mut next_command,
+                        if background_console {
+                            crate::webcodex_runner::shell::background_console_spawn_options()
+                        } else {
+                            Default::default()
+                        },
+                    );
                     let mut next = match spawn {
                         Ok(child) => child,
                         Err(_error) => {

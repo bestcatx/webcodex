@@ -64,7 +64,7 @@ use windows_sys::Win32::Storage::FileSystem::{
 };
 #[cfg(windows)]
 use windows_sys::Win32::System::Threading::{
-    GetProcessTimes, OpenProcess, WaitForSingleObject, CREATE_BREAKAWAY_FROM_JOB,
+    GetProcessTimes, OpenProcess, WaitForSingleObject, CREATE_BREAKAWAY_FROM_JOB, CREATE_NO_WINDOW,
     PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
 };
 
@@ -3132,9 +3132,14 @@ fn detached_supervisor_command(
     #[cfg(unix)]
     make_new_session(&mut command);
     #[cfg(windows)]
-    if _windows_breakaway {
-        command.creation_flags(CREATE_BREAKAWAY_FROM_JOB);
-    }
+    command.creation_flags(
+        CREATE_NO_WINDOW
+            | if _windows_breakaway {
+                CREATE_BREAKAWAY_FROM_JOB
+            } else {
+                0
+            },
+    );
     Ok(command)
 }
 

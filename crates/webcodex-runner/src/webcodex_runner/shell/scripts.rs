@@ -152,10 +152,27 @@ pub(super) fn fixed_script_prefix_args(language: ShellScriptLanguage) -> Vec<OsS
         // Match the Runner's existing Windows PowerShell policy: a process-scoped
         // bypass keeps Runner-owned temporary .ps1 files executable under the
         // stock Restricted machine policy.
-        args.extend([OsString::from("-ExecutionPolicy"), OsString::from("Bypass")]);
+        args.extend([
+            OsString::from("-WindowStyle"),
+            OsString::from("Hidden"),
+            OsString::from("-ExecutionPolicy"),
+            OsString::from("Bypass"),
+        ]);
     }
     args.push(OsString::from("-File"));
     args
+}
+
+#[cfg(windows)]
+pub(super) fn script_spawn_options() -> SpawnOptions {
+    SpawnOptions {
+        windows_creation_flags: windows_sys::Win32::System::Threading::CREATE_NO_WINDOW,
+        ..SpawnOptions::default()
+    }
+}
+#[cfg(not(windows))]
+pub(super) fn script_spawn_options() -> SpawnOptions {
+    SpawnOptions::default()
 }
 
 pub(super) fn apply_script_environment(
@@ -434,7 +451,7 @@ pub(crate) fn run_script_with_profiles_and_execution_state_with_start_hook(
             error: Some(error),
         });
     }
-    let mut result = execute_configured_command(
+    let mut result = execute_configured_command_with_options(
         policy,
         command,
         &cwd_path,
@@ -444,6 +461,7 @@ pub(crate) fn run_script_with_profiles_and_execution_state_with_start_hook(
         start,
         "failed to spawn script interpreter",
         on_started,
+        script_spawn_options(),
     );
     redact_temporary_script_path(&mut result, &[original_path.as_path(), &absolute_path]);
     if let Err(error) = temporary_path.close() {
