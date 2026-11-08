@@ -377,7 +377,10 @@ pub(super) fn run_git_bounded_with_program(
     // ManagedChild owns the whole Git process tree: a private process group on
     // Unix, a kill-on-close Job Object on Windows. Spawn remains direct process
     // spawning with the standard Command spawn failure semantics.
-    let mut child = match ManagedChild::spawn(&mut command) {
+    let mut child = match ManagedChild::spawn_with_options(
+        &mut command,
+        super::super::shell::background_console_spawn_options(),
+    ) {
         Ok(child) => child,
         Err(error) => return Err(format!("failed to spawn git: {error}")),
     };
