@@ -350,6 +350,20 @@ describe("Runtime Console diagnostic contention", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("observes but never retries a busy browser launch", async () => {
+    api.openDiagnosticResource.mockRejectedValueOnce(busy);
+    api.getState.mockResolvedValueOnce(operating("runtime_refresh"));
+    renderConsole();
+    await advance();
+    fireEvent.click(screen.getByRole("button", { name: "Open in browser" }));
+    await advance();
+    expect(api.openDiagnosticResource).toHaveBeenCalledTimes(1);
+    expect(api.getState).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("runtime_refresh");
+    await advance(10_000);
+    expect(api.openDiagnosticResource).toHaveBeenCalledTimes(1);
+  });
+
   it("never retries a busy credential copy or browser launch", async () => {
     api.copyRuntimeConsoleCredential.mockRejectedValue(busy);
     api.openDiagnosticResource.mockRejectedValue(busy);
@@ -364,7 +378,7 @@ describe("Runtime Console diagnostic contention", () => {
     expect(api.copyRuntimeConsoleCredential).toHaveBeenCalledExactlyOnceWith("identity-fence");
     expect(within(screen.getByRole("dialog")).getByRole("alert")).toHaveTextContent(busy.code);
     expect(api.diagnostics).toHaveBeenCalledTimes(1);
-    expect(api.getState).not.toHaveBeenCalled();
+    expect(api.getState).toHaveBeenCalledTimes(1);
   });
 });
 

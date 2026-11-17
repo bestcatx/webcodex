@@ -14,6 +14,7 @@ export function RuntimeConsolePanel({ state, onSettings }: { state: DesktopState
   const p = useProduct(); const s = useShellText(); const { t } = useLocale();
   const [data, setData] = useState<DiagnosticSnapshot | null>(null);
   const [error, setError] = useState<DesktopError | null>(null);
+  const [busyOperation, setBusyOperation] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -25,7 +26,7 @@ export function RuntimeConsolePanel({ state, onSettings }: { state: DesktopState
   useEffect(() => {
     const request = new AbortController();
     observation.current += 1;
-    setData(null); setError(null); setConfirmation(false); setCopied(false);
+    setData(null); setError(null); setBusyOperation(null); setConfirmation(false); setCopied(false);
     void readDesktopObservation(identity, request.signal, desktopApi.diagnostics).then(next => { if (!request.signal.aborted) setData(next); })
       .catch(value => { if (!request.signal.aborted) setError(normalizeDesktopError(value)); });
     return () => { request.abort(); };
@@ -33,22 +34,41 @@ export function RuntimeConsolePanel({ state, onSettings }: { state: DesktopState
   const disabled = busy || Boolean(state.current_operation);
   const available = Boolean(data?.resources.includes("runtime_console"));
   const canCopy = available && Boolean(data?.can_copy_console_credential && data.credential_copy_fence);
-  const act = async (action: () => Promise<void>, onSuccess?: () => void) => {
+  const act = async (action: () => Promise<void>, onSuccess?: () => void, observeBrowserBusy = false) => {
     if (disabled) return;
     const observed = observation.current;
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setBusyOperation(null);
     try { await action(); if (alive.current && observation.current === observed) onSuccess?.(); }
-    catch (value) { if (alive.current && observation.current === observed) setError(normalizeDesktopError(value)); }
+    catch (value) {
+      if (!alive.current || observation.current !== observed) return;
+      const failure = normalizeDesktopError(value);
+      // A read-only snapshot after browser-open failure; never retry that side effect.
+      if (observeBrowserBusy && failure.code === "desktop_operation_busy") {
+        try {
+          const snapshot = await desktopApi.getState();
+          if (!alive.current || observation.current !== observed) return;
+          const operation = snapshot.current_operation;
+          if (operation) {
+            setBusyOperation(operation.kind + " / " + operation.phase);
+            setError(failure);
+            return;
+          }
+        } catch {
+          // Preserve the original error if the state-only observation fails.
+        }
+      }
+      setError(failure);
+    }
     finally { if (alive.current) setBusy(false); }
   };
   const presentation = error && desktopErrorPresentation(error, t);
-  const errorCard = presentation && <div className="error-card" role="alert"><strong>{presentation.title}</strong><span>{presentation.action}</span><details><summary>{p("details")}</summary><code>{error?.code}</code></details></div>;
+  const errorCard = presentation && <div className="error-card" role="alert"><strong>{presentation.title}</strong><span>{presentation.action}</span><details><summary>{p("details")}</summary><code>{error?.code}</code>{busyOperation && <code>{busyOperation}</code>}</details></div>;
   return <section className="page-section workspace-page console-page" data-webcodex-page="console" aria-labelledby="console-title">
     <header className="page-heading-row"><h1 id="console-title">{p("runtimeConsole")}</h1><button type="button" className="secondary-button" disabled={disabled} onClick={() => setRevision(value => value + 1)}>{p("refresh")}</button></header>
     <div className="console-launch">
       <Monitor size={32} aria-hidden="true" />
       <p>{p("consolePurpose")}</p>
-      <button type="button" className="primary-button" disabled={disabled || !available || state.readiness.server !== "ready"} onClick={() => void act(() => desktopApi.openDiagnosticResource("runtime_console"))}>{p("consoleBrowser")}<ExternalLink size={16} aria-hidden="true" /></button>
+      <button type="button" className="primary-button" disabled={disabled || !available || state.readiness.server !== "ready"} onClick={() => void act(() => desktopApi.openDiagnosticResource("runtime_console"), undefined, true)}>{p("consoleBrowser")}<ExternalLink size={16} aria-hidden="true" /></button>
     </div>
     {!data && !error && <p role="status">{p("loading")}</p>}
     {data && !available && <p className="workspace-notice">{p("consoleRemoteHelp")}</p>}
